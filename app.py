@@ -4,7 +4,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 
 # Load and Train Model
-@st.cache_resource  # Cache the model training process
+@st.cache_resource
 def load_and_train_model():
     file_path = 'synthetic_final_mapping (1).csv'
     data = pd.read_csv(file_path)
@@ -30,10 +30,10 @@ def load_and_train_model():
     model = RandomForestClassifier(random_state=42)
     model.fit(X, y)
 
-    return model, data, label_encoders
+    return model, data, label_encoders, relevant_columns
 
 # Load Test Case Dataset
-@st.cache_data  # Cache the test case loading process
+@st.cache_data
 def load_test_case_dataset():
     test_case_file = 'selected_demand_1.xlsx'
     test_case_data = pd.read_excel(test_case_file)
@@ -77,7 +77,7 @@ st.markdown(
 st.markdown("<h1 class='title'>🚀 Demand to Talent Recommendation System</h1>", unsafe_allow_html=True)
 
 # Load model and datasets
-model, data, label_encoders = load_and_train_model()
+model, data, label_encoders, relevant_columns = load_and_train_model()
 test_case_data = load_test_case_dataset()
 
 # Project ID Section
@@ -98,10 +98,11 @@ else:
     st.markdown("### 🛠️ Auto-Populated Project Attributes")
     col1, col2 = st.columns(2)
     user_input = []
-    columns = data.columns.drop("Employment ID")
+    feature_columns = relevant_columns.copy()
+    feature_columns.remove("Employment ID")  # Exclude target column
 
-    # Display auto-populated fields as read-only
-    for idx, column in enumerate(columns):
+    # Prepare user input to match training features
+    for idx, column in enumerate(feature_columns):
         with col1 if idx % 2 == 0 else col2:
             if column in selected_project:
                 value = selected_project[column]
@@ -110,6 +111,13 @@ else:
                     user_input.append(label_encoders[column].transform([value])[0])
                 else:
                     user_input.append(value)
+            else:
+                # Handle missing columns with default values
+                default_value = "Unknown" if column in label_encoders else 0
+                if column in label_encoders:
+                    user_input.append(label_encoders[column].transform([default_value])[0])
+                else:
+                    user_input.append(default_value)
 
     # Prediction Button
     st.markdown("<br>", unsafe_allow_html=True)
@@ -135,4 +143,3 @@ else:
 
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
-
