@@ -12,7 +12,8 @@ def load_and_train_model():
     # Select relevant columns for the model
     relevant_columns = [
         "Role Status", "Region", "Project Type", "Track", "Location Shore", 
-        "Primary Skill (Must have)", "Grade", "Employment ID"
+        "Primary Skill (Must have)", "Grade", "Employment ID", 
+        "First Name", "Last Name", "Work Region", "Designation", "Email"
     ]
     data = data[relevant_columns]
 
@@ -123,10 +124,15 @@ else:
             # Decode the employee details
             decoded_employee_details = decode_employee_details(employee_details, label_encoders)
 
+            # Select unique records and only relevant columns
+            unique_employees = decoded_employee_details.drop_duplicates(subset=["Employment ID"])
+            display_columns = ["Employment ID", "First Name", "Last Name", "Work Region", "Designation", "Email"]
+
             # Display results in a styled table
             st.markdown("<div class='result-table'>", unsafe_allow_html=True)
-            st.table(decoded_employee_details[['Employment ID', 'Role Status', 'Region', 'Project Type', 'Track', 'Location Shore', 'Primary Skill (Must have)', 'Grade']])
+            st.table(unique_employees[display_columns])
             st.markdown("</div>", unsafe_allow_html=True)
 
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
+
