@@ -22,7 +22,7 @@ def load_and_train_model():
     for column in data.select_dtypes(include=['object']).columns:
         le = LabelEncoder()
         data[column] = le.fit_transform(data[column].fillna("Unknown"))
-        # Add "Unknown" to the encoder's classes if it's not already there
+        # Ensure "Unknown" is added as a fallback
         if "Unknown" not in le.classes_:
             le.classes_ = list(le.classes_) + ["Unknown"]
         label_encoders[column] = le
@@ -59,17 +59,20 @@ def recommend_employees(model, input_data, data):
 
 # Decode employee details
 def decode_employee_details(employee_ids, data, label_encoders):
-    # Get unique employee records
-    unique_employees = data[data["Employment ID"].isin(employee_ids)].drop_duplicates(subset="Employment ID")
+    # Filter only the relevant employees
+    filtered_data = data[data["Employment ID"].isin(employee_ids)]
 
-    # Decode categorical columns back to their original values
-    decoded_data = unique_employees.copy()
+    # Decode all categorical columns back to original values
+    decoded_data = filtered_data.copy()
     for column, encoder in label_encoders.items():
         if column in decoded_data.columns:
             decoded_data[column] = encoder.inverse_transform(decoded_data[column])
-    
-    # Select and return required columns
-    return decoded_data[["Employment ID", "First Name", "Last Name", "Work Region", "Designation", "Email"]]
+
+    # Drop duplicates to ensure unique employee records
+    unique_employees = decoded_data.drop_duplicates(subset="Employment ID")
+
+    # Select only required columns
+    return unique_employees[["Employment ID", "First Name", "Last Name", "Work Region", "Designation", "Email"]]
 
 # Streamlit App Styling
 st.markdown(
@@ -116,7 +119,6 @@ else:
                 value = selected_project[column]
                 st.text_input(f"**{column}**", value, disabled=True)  # Read-only field
                 if column in label_encoders:
-                    # Transform the value using LabelEncoder
                     user_input.append(label_encoders[column].transform([value])[0])
                 else:
                     user_input.append(value)
@@ -133,20 +135,4 @@ else:
                 else:
                     user_input.append(default_value)
 
-    # Prediction Button
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🎯 Get Suitable Employees", help="Click to fetch top employees based on project attributes."):
-        try:
-            st.markdown("### 🏆 Top 3 Recommended Employees")
-            recommendations = recommend_employees(model, user_input, data)
-
-            # Fetch details of top recommended employees
-            employee_details = decode_employee_details(recommendations, data, label_encoders)
-
-            # Display results in a styled table
-            st.markdown("<div class='result-table'>", unsafe_allow_html=True)
-            st.table(employee_details)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
+    # Prediction
